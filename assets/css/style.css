@@ -1,0 +1,105 @@
+:root {
+  --primary: #4f46e5;
+  --primary-dark: #4338ca;
+  --sidebar-w: 230px;
+}
+
+body {
+  background-color: #f4f6f9;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- Navbar ---------- */
+.app-navbar {
+  background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+  padding: 0.6rem 1rem;
+}
+.app-navbar .navbar-brand,
+.app-navbar .navbar-brand i { color: #fff; }
+
+/* ---------- Layout ---------- */
+.app-wrapper {
+  display: flex;
+  min-height: calc(100vh - 56px);
+}
+
+.app-sidebar {
+  width: var(--sidebar-w);
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+.app-sidebar .nav-link {
+  color: #374151;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 2px;
+  font-size: 0.92rem;
+}
+.app-sidebar .nav-link:hover { background: #f1f2ff; color: var(--primary); }
+.app-sidebar .nav-link.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.app-content {
+  flex: 1;
+  padding: 1.5rem;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    position: fixed;
+    top: 56px;
+    left: -260px;
+    height: calc(100vh - 56px);
+    z-index: 1030;
+    transition: left 0.2s ease;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+  }
+  .app-sidebar.show { left: 0; }
+}
+
+/* ---------- Cards ---------- */
+.stat-card {
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  padding: 1.1rem 1.3rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+}
+.stat-card h3 { margin-bottom: 0; font-weight: 700; }
+.stat-card .label { opacity: .85; font-size: .82rem; }
+.stat-card.c1 { background: linear-gradient(135deg,#4f46e5,#6366f1); }
+.stat-card.c2 { background: linear-gradient(135deg,#0891b2,#06b6d4); }
+.stat-card.c3 { background: linear-gradient(135deg,#059669,#10b981); }
+.stat-card.c4 { background: linear-gradient(135deg,#d97706,#f59e0b); }
+
+.section-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #eef0f4;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+/* ---------- Clock ---------- */
+.clock-box {
+  text-align: center;
+  padding: 1.5rem;
+}
+.clock-box .time { font-size: 2.6rem; font-weight: 700; color: var(--primary); }
+.clock-box .btn-checkin { padding: .6rem 2rem; border-radius: 30px; font-weight: 600; }
+
+/* ---------- Status badges ---------- */
+.badge-status-Planned      { background:#e5e7eb; color:#374151; }
+.badge-status-InProgress,
+.badge-status-In-Progress  { background:#fef3c7; color:#92400e; }
+.badge-status-Completed    { background:#d1fae5; color:#065f46; }
+.badge-status-Pending      { background:#fee2e2; color:#991b1b; }
+.badge-status-Cancelled    { background:#e5e7eb; color:#6b7280; text-decoration: line-through; }
+
+.badge-wp-WFO { background:#dbeafe; color:#1e40af; }
+.badge-wp-WFH { background:#ede9fe; color:#5b21b6; }
