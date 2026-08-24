@@ -3,6 +3,8 @@
 Aplikasi pencatat aktivitas kerja harian pengganti Excel manual — dibuat dengan
 **PHP native (tanpa framework)** + MySQL + Bootstrap 5.
 
+<img width="1919" height="872" alt="image" src="https://github.com/user-attachments/assets/77432d5d-eebe-4b7d-97a1-8b363e0c6b7d" />
+
 Versi ini adalah **MVP** dengan fitur:
 - Dashboard (statistik bulan berjalan + grafik jam kerja 7 hari)
 - Profil Karyawan (termasuk data kop surat: nama perusahaan, alamat, telp)
