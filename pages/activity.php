@@ -62,8 +62,19 @@ if (isset($_GET['edit'])) {
     $editData = $stmt->fetch();
 }
 
-// ---------- List aktivitas terbaru (30 terakhir) ----------
-$stmt = $db->prepare('SELECT * FROM activities WHERE user_id = ? ORDER BY activity_date DESC, id DESC LIMIT 30');
+// ---------- Pagination ----------
+$perPage = 10;
+$page    = max(1, (int)($_GET['page'] ?? 1));
+
+$stmt = $db->prepare('SELECT COUNT(*) AS total FROM activities WHERE user_id = ?');
+$stmt->execute([$userId]);
+$totalRows  = (int)$stmt->fetch()['total'];
+$totalPages = max(1, (int)ceil($totalRows / $perPage));
+$page       = min($page, $totalPages);
+$offset     = ($page - 1) * $perPage;
+
+// ---------- List aktivitas (dengan pagination) ----------
+$stmt = $db->prepare("SELECT * FROM activities WHERE user_id = ? ORDER BY activity_date DESC, id DESC LIMIT $perPage OFFSET $offset");
 $stmt->execute([$userId]);
 $activities = $stmt->fetchAll();
 
@@ -140,6 +151,33 @@ require_once __DIR__ . '/../includes/sidebar.php';
         </tbody>
       </table>
     </div>
+
+    <?php if ($totalPages > 1): ?>
+      <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+        <span class="small text-muted"><?= $totalRows ?> aktivitas &middot; Halaman <?= $page ?> dari <?= $totalPages ?></span>
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+              <a class="page-link" href="?page=<?= $page - 1 ?>">&laquo; Sebelumnya</a>
+            </li>
+            <?php
+            $start = max(1, $page - 2);
+            $end   = min($totalPages, $page + 2);
+            if ($start > 1) echo '<li class="page-item disabled"><span class="page-link">&hellip;</span></li>';
+            for ($p = $start; $p <= $end; $p++): ?>
+              <li class="page-item <?= $p === $page ? 'active' : '' ?>">
+                <a class="page-link" href="?page=<?= $p ?>"><?= $p ?></a>
+              </li>
+            <?php endfor;
+            if ($end < $totalPages) echo '<li class="page-item disabled"><span class="page-link">&hellip;</span></li>';
+            ?>
+            <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+              <a class="page-link" href="?page=<?= $page + 1 ?>">Berikutnya &raquo;</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    <?php endif; ?>
   </div>
 </main>
 

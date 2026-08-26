@@ -4,10 +4,17 @@ require_once __DIR__ . '/../includes/auth.php';
 $db     = getDB();
 $userId = CURRENT_USER_ID;
 $today  = date('Y-m-d');
-$monthStart = date('Y-m-01');
-$monthEnd   = date('Y-m-t');
 
-// ---------- Statistik bulan ini ----------
+// ---------- Bulan yang ditampilkan (filter, default bulan berjalan) ----------
+$month = $_GET['month'] ?? date('Y-m');
+if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+    $month = date('Y-m');
+}
+$monthStart = $month . '-01';
+$monthEnd   = date('Y-m-t', strtotime($monthStart));
+$isCurrentMonth = $month === date('Y-m');
+
+// ---------- Statistik bulan terpilih ----------
 $stmt = $db->prepare("
     SELECT
         COUNT(DISTINCT CASE WHEN check_in IS NOT NULL THEN activity_date END) AS total_hari,
@@ -19,7 +26,7 @@ $stmt = $db->prepare("
         COUNT(CASE WHEN status = 'Pending' THEN 1 END) AS task_pending,
         COUNT(*) AS task_bulan_ini
     FROM activities
-    WHERE user_id = ? AND activity_date BETWEEN ? AND ?
+    WHERE user_id = ? AND statusenabled = 't' AND activity_date BETWEEN ? AND ?
 ");
 $stmt->execute([$userId, $monthStart, $monthEnd]);
 $stat = $stmt->fetch();
@@ -38,7 +45,7 @@ $stmt = $db->prepare("
            CASE WHEN check_in IS NOT NULL AND check_out IS NOT NULL
                 THEN TIMESTAMPDIFF(MINUTE, check_in, check_out) ELSE 0 END AS menit
     FROM activities
-    WHERE user_id = ? AND activity_date BETWEEN DATE_SUB(?, INTERVAL 6 DAY) AND ?
+    WHERE user_id = ? AND statusenabled = 't' AND activity_date BETWEEN DATE_SUB(?, INTERVAL 6 DAY) AND ?
     ORDER BY activity_date ASC
 ");
 $stmt->execute([$userId, $today, $today]);
@@ -55,17 +62,58 @@ foreach ($weekRows as $row) {
 }
 $maxJam = max(array_merge($weekData, [1]));
 
+// ---------- Kalender aktivitas bulan terpilih (hijau = sudah entry, merah = belum entry) ----------
+$stmt = $db->prepare("SELECT DISTINCT activity_date FROM activities WHERE user_id = ? AND statusenabled = 't' AND activity_date BETWEEN ? AND ?");
+$stmt->execute([$userId, $monthStart, $monthEnd]);
+$entryDates = array_flip(array_column($stmt->fetchAll(), 'activity_date'));
+
+$daysInMonth   = (int)date('t', strtotime($monthStart));
+$firstWeekday  = (int)date('N', strtotime($monthStart)); // 1=Senin ... 7=Minggu
+$calendarCells = array_fill(0, $firstWeekday - 1, null); // kosongkan sebelum tanggal 1
+
+for ($d = 1; $d <= $daysInMonth; $d++) {
+    $dateStr   = sprintf('%s-%02d', $month, $d);
+    $dow       = (int)date('N', strtotime($dateStr)); // 1-7
+    $isWeekday = $dow >= 1 && $dow <= 5;
+    $hasEntry  = isset($entryDates[$dateStr]);
+
+    if ($hasEntry) {
+        $status = 'entry';       // hijau
+    } elseif ($isWeekday && $dateStr < $today) {
+        $status = 'missing';     // merah - hari kerja sudah lewat, belum diisi
+    } elseif ($isWeekday && $dateStr === $today) {
+        $status = 'today';       // biru - hari ini, belum diisi
+    } else {
+        $status = 'neutral';     // abu-abu - weekend / belum waktunya
+    }
+
+    $calendarCells[] = ['day' => $d, 'date' => $dateStr, 'status' => $status];
+}
+// Genapkan ke kelipatan 7 supaya grid rapi
+while (count($calendarCells) % 7 !== 0) {
+    $calendarCells[] = null;
+}
+
 $pageTitle = 'Dashboard';
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
 ?>
 
 <main class="app-content">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
       <h4 class="fw-bold mb-0">Dashboard</h4>
-      <small class="text-muted"><?= date('F Y') ?></small>
+      <small class="text-muted"><?= e(date('F Y', strtotime($monthStart))) ?><?= $isCurrentMonth ? '' : ' (bukan bulan berjalan)' ?></small>
     </div>
+    <form method="GET" class="d-flex align-items-end gap-2">
+      <div>
+        <label class="form-label small mb-1">Bulan</label>
+        <input type="month" name="month" class="form-control form-control-sm" value="<?= e($month) ?>" onchange="this.form.submit()">
+      </div>
+      <?php if (!$isCurrentMonth): ?>
+        <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">Bulan Ini</a>
+      <?php endif; ?>
+    </form>
   </div>
 
   <!-- Stat cards -->
@@ -111,8 +159,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <option value="WFO">WFO</option>
                 <option value="WFH">WFH</option>
               </select>
-            </div> -->
-            <!-- <button id="btnCheckIn" class="btn btn-success btn-checkin">
+            </div>
+            <button id="btnCheckIn" class="btn btn-success btn-checkin">
               <i class="bi bi-box-arrow-in-right me-1"></i> Check In
             </button> -->
           <?php elseif (!$todayActivity['check_out']): ?>
@@ -172,6 +220,36 @@ require_once __DIR__ . '/../includes/sidebar.php';
           <h4 class="fw-bold text-danger mb-0"><?= (int)$stat['task_pending'] ?></h4>
         </div>
         <i class="bi bi-hourglass-split text-danger" style="font-size:2rem;"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kalender aktivitas -->
+  <div class="row g-3 mt-1">
+    <div class="col-12">
+      <div class="section-card">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h6 class="fw-bold mb-0"><i class="bi bi-calendar3 me-1"></i>Kalender Aktivitas &mdash; <?= e(date('F Y', strtotime($monthStart))) ?></h6>
+          <div class="d-flex gap-3 small">
+            <span><span class="cal-dot cal-dot-entry"></span> Sudah diisi</span>
+            <span><span class="cal-dot cal-dot-missing"></span> Belum diisi</span>
+            <span><span class="cal-dot cal-dot-today"></span> Hari ini</span>
+          </div>
+        </div>
+        <div class="calendar-grid">
+          <?php foreach (['Sen','Sel','Rab','Kam','Jum','Sab','Min'] as $h): ?>
+            <div class="calendar-head"><?= $h ?></div>
+          <?php endforeach; ?>
+          <?php foreach ($calendarCells as $cell): ?>
+            <?php if ($cell === null): ?>
+              <div class="calendar-cell calendar-empty"></div>
+            <?php else: ?>
+              <div class="calendar-cell calendar-<?= e($cell['status']) ?>" title="<?= e(date('d/m/Y', strtotime($cell['date']))) ?>">
+                <?= $cell['day'] ?>
+              </div>
+            <?php endif; ?>
+          <?php endforeach; ?>
+        </div>
       </div>
     </div>
   </div>

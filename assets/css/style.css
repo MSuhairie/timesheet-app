@@ -103,3 +103,36 @@ body {
 
 .badge-wp-WFO { background:#dbeafe; color:#1e40af; }
 .badge-wp-WFH { background:#ede9fe; color:#5b21b6; }
+
+/* ---------- Kalender Aktivitas ---------- */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.calendar-head {
+  text-align: center;
+  font-weight: 600;
+  font-size: .78rem;
+  color: #6b7280;
+  padding-bottom: 4px;
+}
+.calendar-cell {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: .85rem;
+  font-weight: 600;
+}
+.calendar-empty { background: transparent; }
+.calendar-entry   { background: #d1fae5; color: #065f46; }
+.calendar-missing { background: #fee2e2; color: #991b1b; }
+.calendar-today   { background: #dbeafe; color: #1e40af; border: 2px solid #3b82f6; }
+.calendar-neutral { background: #f3f4f6; color: #9ca3af; }
+
+.cal-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:middle; }
+.cal-dot-entry   { background:#10b981; }
+.cal-dot-missing { background:#ef4444; }
+.cal-dot-today   { background:#3b82f6; }

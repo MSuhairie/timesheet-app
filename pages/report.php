@@ -13,7 +13,7 @@ $stmt = $db->prepare('SELECT * FROM users WHERE id = ?');
 $stmt->execute([$userId]);
 $user = $stmt->fetch();
 
-$stmt = $db->prepare("SELECT * FROM activities WHERE user_id = ? AND DATE_FORMAT(activity_date, '%Y-%m') = ?
+$stmt = $db->prepare("SELECT * FROM activities WHERE user_id = ? AND statusenabled = 't' AND DATE_FORMAT(activity_date, '%Y-%m') = ?
                        ORDER BY activity_date ASC, id ASC");
 $stmt->execute([$userId, $month]);
 $rows = $stmt->fetchAll();
