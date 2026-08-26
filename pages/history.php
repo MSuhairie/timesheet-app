@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save'
     $workPlace    = in_array($_POST['work_place'] ?? '', $validPlace, true) ? $_POST['work_place'] : 'WFO';
     $task         = trim($_POST['task'] ?? '');
     $notes        = trim($_POST['notes'] ?? '');
-    $status       = in_array($_POST['status'] ?? '', $validStatus, true) ? $_POST['status'] : 'Planned';
+    $status       = in_array($_POST['status'] ?? '', $validStatus, true) ? $_POST['status'] : 'Completed';
 
     if ($task === '') {
         $errors[] = 'Task wajib diisi.';
@@ -184,7 +184,6 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <th>Jam Kerja</th>
             <th>Tempat</th>
             <th>Task</th>
-            <th>Status</th>
             <th class="text-end">Aksi</th>
           </tr>
         </thead>
@@ -208,7 +207,6 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <td class="small" style="max-width:300px;">
               <div class="text-truncate" title="<?= e($r['task']) ?>"><?= e($r['task']) ?></div>
             </td>
-            <td><span class="badge badge-status-<?= e(str_replace(' ', '', $r['status'])) ?>"><?= e($r['status']) ?></span></td>
             <td class="text-end">
               <button type="button" class="btn btn-sm btn-outline-secondary btn-copy-task" data-task="<?= e($r['task']) ?>" title="Salin Task">
                 <i class="bi bi-clipboard"></i>
@@ -292,20 +290,20 @@ require_once __DIR__ . '/../includes/sidebar.php';
           </div>
           <div class="col-12">
             <label class="form-label small">Task</label>
-            <textarea name="task" id="f_task" class="form-control" rows="2" required><?= e($editData['task'] ?? '') ?></textarea>
+            <textarea name="task" id="f_task" class="form-control" rows="4" required><?= e($editData['task'] ?? '') ?></textarea>
           </div>
           <div class="col-12">
             <label class="form-label small">Notes</label>
             <textarea name="notes" id="f_notes" class="form-control" rows="2"><?= e($editData['notes'] ?? '') ?></textarea>
           </div>
-          <div class="col-12">
+          <!-- <div class="col-12">
             <label class="form-label small">Status</label>
             <select name="status" id="f_status" class="form-select">
               <?php foreach ($validStatus as $s): ?>
                 <option value="<?= e($s) ?>" <?= (($editData['status'] ?? 'Planned') === $s) ? 'selected' : '' ?>><?= e($s) ?></option>
               <?php endforeach; ?>
             </select>
-          </div>
+          </div> -->
         </div>
       </div>
       <div class="modal-footer">

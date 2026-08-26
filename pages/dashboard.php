@@ -62,32 +62,65 @@ foreach ($weekRows as $row) {
 }
 $maxJam = max(array_merge($weekData, [1]));
 
-// ---------- Kalender aktivitas bulan terpilih (hijau = sudah entry, merah = belum entry) ----------
-$stmt = $db->prepare("SELECT DISTINCT activity_date FROM activities WHERE user_id = ? AND statusenabled = 't' AND activity_date BETWEEN ? AND ?");
+// ---------- Kalender aktivitas bulan terpilih (hijau = sudah lengkap, merah = belum diisi) ----------
+$stmt = $db->prepare("SELECT activity_date, check_in, check_out, work_place, task FROM activities WHERE user_id = ? AND statusenabled = 't' AND activity_date BETWEEN ? AND ?");
 $stmt->execute([$userId, $monthStart, $monthEnd]);
-$entryDates = array_flip(array_column($stmt->fetchAll(), 'activity_date'));
+$entryRows = $stmt->fetchAll();
+
+// Peta tanggal -> status entry: 'filled' (check_in & task terisi), 'partial' (baris ada tapi belum lengkap)
+// serta detail check_in/check_out/work_place untuk ditampilkan di kalender
+$entryStatusByDate = [];
+$entryDetailByDate = [];
+foreach ($entryRows as $row) {
+    $entryStatusByDate[$row['activity_date']] =
+        ($row['check_in'] && trim((string)$row['task']) !== '') ? 'filled' : 'partial';
+    $entryDetailByDate[$row['activity_date']] = [
+        'check_in'   => $row['check_in'] ? substr($row['check_in'], 0, 5) : null,
+        'check_out'  => $row['check_out'] ? substr($row['check_out'], 0, 5) : null,
+        'work_place' => $row['work_place'],
+    ];
+}
 
 $daysInMonth   = (int)date('t', strtotime($monthStart));
 $firstWeekday  = (int)date('N', strtotime($monthStart)); // 1=Senin ... 7=Minggu
 $calendarCells = array_fill(0, $firstWeekday - 1, null); // kosongkan sebelum tanggal 1
+$belumDiisi    = 0; // hari kerja bulan ini yang timesheet-nya belum lengkap (tidak ada baris ATAU baris ada tapi belum lengkap)
+$totalHariKerjaBulan = 0; // total hari kerja (Senin-Jumat) dalam bulan yang ditampilkan
+$totalLembur   = 0; // jumlah hari Sabtu/Minggu yang ada entry lengkap (lembur)
 
 for ($d = 1; $d <= $daysInMonth; $d++) {
-    $dateStr   = sprintf('%s-%02d', $month, $d);
-    $dow       = (int)date('N', strtotime($dateStr)); // 1-7
-    $isWeekday = $dow >= 1 && $dow <= 5;
-    $hasEntry  = isset($entryDates[$dateStr]);
+    $dateStr    = sprintf('%s-%02d', $month, $d);
+    $dow        = (int)date('N', strtotime($dateStr)); // 1-7
+    $isWeekday  = $dow >= 1 && $dow <= 5;
+    if ($isWeekday) $totalHariKerjaBulan++;
+    $entryState = $entryStatusByDate[$dateStr] ?? null;
 
-    if ($hasEntry) {
-        $status = 'entry';       // hijau
+    if ($entryState === 'filled') {
+        if ($isWeekday) {
+            $status = 'entry';       // hijau - hari kerja, sudah lengkap
+        } else {
+            $status = 'overtime';    // ungu - Sabtu/Minggu tapi ada entry (lembur)
+            $totalLembur++;
+        }
+    } elseif ($entryState === 'partial' && $dateStr <= $today) {
+        $status = 'partial';     // kuning - baris ada tapi belum lengkap (task/check-in kosong)
+        if ($isWeekday) $belumDiisi++;
     } elseif ($isWeekday && $dateStr < $today) {
-        $status = 'missing';     // merah - hari kerja sudah lewat, belum diisi
+        $status = 'missing';     // merah - hari kerja sudah lewat, belum ada baris sama sekali
+        $belumDiisi++;
     } elseif ($isWeekday && $dateStr === $today) {
         $status = 'today';       // biru - hari ini, belum diisi
+
     } else {
         $status = 'neutral';     // abu-abu - weekend / belum waktunya
     }
 
-    $calendarCells[] = ['day' => $d, 'date' => $dateStr, 'status' => $status];
+    $calendarCells[] = [
+        'day'    => $d,
+        'date'   => $dateStr,
+        'status' => $status,
+        'detail' => $entryDetailByDate[$dateStr] ?? null,
+    ];
 }
 // Genapkan ke kelipatan 7 supaya grid rapi
 while (count($calendarCells) % 7 !== 0) {
@@ -216,10 +249,10 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <div class="col-md-6">
       <div class="section-card d-flex align-items-center justify-content-between">
         <div>
-          <div class="text-muted small">Task Pending (bulan ini)</div>
-          <h4 class="fw-bold text-danger mb-0"><?= (int)$stat['task_pending'] ?></h4>
+          <div class="text-muted small">Timesheet Belum Diisi (hari kerja bulan ini)</div>
+          <h4 class="fw-bold text-danger mb-0"><?= $belumDiisi ?> <small style="font-size:.9rem; font-weight:normal;">dari <?= $totalHariKerjaBulan ?> hari kerja</small></h4>
         </div>
-        <i class="bi bi-hourglass-split text-danger" style="font-size:2rem;"></i>
+        <i class="bi bi-calendar-x text-danger" style="font-size:2rem;"></i>
       </div>
     </div>
   </div>
@@ -229,9 +262,16 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <div class="col-12">
       <div class="section-card">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <h6 class="fw-bold mb-0"><i class="bi bi-calendar3 me-1"></i>Kalender Aktivitas &mdash; <?= e(date('F Y', strtotime($monthStart))) ?></h6>
-          <div class="d-flex gap-3 small">
+          <h6 class="fw-bold mb-0">
+            <i class="bi bi-calendar3 me-1"></i>Kalender Aktivitas &mdash; <?= e(date('F Y', strtotime($monthStart))) ?>
+            <?php if ($totalLembur > 0): ?>
+              <span class="badge bg-primary ms-1"><?= $totalLembur ?> hari lembur</span>
+            <?php endif; ?>
+          </h6>
+          <div class="d-flex gap-3 small flex-wrap">
             <span><span class="cal-dot cal-dot-entry"></span> Sudah diisi</span>
+            <span><span class="cal-dot cal-dot-overtime"></span> Lembur (weekend)</span>
+            <span><span class="cal-dot cal-dot-partial"></span> Belum lengkap</span>
             <span><span class="cal-dot cal-dot-missing"></span> Belum diisi</span>
             <span><span class="cal-dot cal-dot-today"></span> Hari ini</span>
           </div>
@@ -244,8 +284,19 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <?php if ($cell === null): ?>
               <div class="calendar-cell calendar-empty"></div>
             <?php else: ?>
-              <div class="calendar-cell calendar-<?= e($cell['status']) ?>" title="<?= e(date('d/m/Y', strtotime($cell['date']))) ?>">
-                <?= $cell['day'] ?>
+              <div class="calendar-cell calendar-<?= e($cell['status']) ?>"
+                   title="<?= e(date('d/m/Y', strtotime($cell['date']))) ?><?= $cell['status'] === 'overtime' ? ' - Lembur' : '' ?>">
+                <div class="calendar-daynum">
+                  <?= $cell['day'] ?><?= $cell['status'] === 'overtime' ? ' <i class="bi bi-lightning-charge-fill" style="font-size:.55rem;"></i>' : '' ?>
+                </div>
+                <?php if ($cell['detail']): ?>
+                  <div class="calendar-time">
+                    <?= $cell['detail']['check_in'] ?: '--:--' ?>&ndash;<?= $cell['detail']['check_out'] ?: '--:--' ?>
+                  </div>
+                  <?php if ($cell['detail']['work_place']): ?>
+                    <div class="calendar-badge badge-wp-<?= e($cell['detail']['work_place']) ?>"><?= e($cell['detail']['work_place']) ?></div>
+                  <?php endif; ?>
+                <?php endif; ?>
               </div>
             <?php endif; ?>
           <?php endforeach; ?>
