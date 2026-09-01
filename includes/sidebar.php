@@ -17,6 +17,12 @@ function navActive(string $file, string $current): string
       <!-- <i class="bi bi-clock-history me-2"></i>Riwayat Aktivitas -->
       <i class="bi bi-list-task me-2"></i>Daily Activity
     </a>
+    <a class="nav-link <?= navActive('special_dates.php', $current) ?>" href="<?= $base ?>/pages/special_dates.php">
+      <i class="bi bi-calendar-heart me-2"></i>Tanggal Merah &amp; Cuti
+    </a>
+    <a class="nav-link <?= navActive('report_lembur.php', $current) ?>" href="<?= $base ?>/pages/report_lembur.php">
+      <i class="bi bi-moon-stars me-2"></i>Surat Perintah Lembur
+    </a>
     <a class="nav-link <?= navActive('report.php', $current) ?>" href="<?= $base ?>/pages/report.php">
       <i class="bi bi-printer me-2"></i>Cetak Laporan
     </a>

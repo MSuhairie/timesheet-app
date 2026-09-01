@@ -134,14 +134,14 @@ require_once __DIR__ . '/../includes/sidebar.php';
   </div>
 
   <div class="section-card mb-3">
-    <form method="GET" class="row g-2 align-items-end">
+    <form method="GET" id="filterForm" class="row g-2 align-items-end">
       <div class="col-6 col-md-2">
         <label class="form-label small">Bulan</label>
-        <input type="month" name="month" class="form-control form-control-sm" value="<?= e($fMonth) ?>">
+        <input type="month" name="month" class="form-control form-control-sm" value="<?= e($fMonth) ?>" onchange="autoSubmit()">
       </div>
       <div class="col-6 col-md-2">
         <label class="form-label small">Work Place</label>
-        <select name="place" class="form-select form-select-sm">
+        <select name="place" class="form-select form-select-sm" onchange="autoSubmit()">
           <option value="">Semua</option>
           <option value="WFO" <?= $fPlace === 'WFO' ? 'selected' : '' ?>>WFO</option>
           <option value="WFH" <?= $fPlace === 'WFH' ? 'selected' : '' ?>>WFH</option>
@@ -156,12 +156,11 @@ require_once __DIR__ . '/../includes/sidebar.php';
           <?php endforeach; ?>
         </select>
       </div> -->
-      <div class="col-6 col-md-6">
+      <div class="col-6 col-md-7">
         <label class="form-label small">Cari Task / Notes</label>
-        <input type="text" name="q" class="form-control form-control-sm" placeholder="Cari....." value="<?= e($fSearch) ?>">
+        <input type="text" name="q" id="searchInput" class="form-control form-control-sm" placeholder="Cari....." value="<?= e($fSearch) ?>" autocomplete="off">
       </div>
-      <div class="col-12 col-md-2 d-flex gap-2">
-        <button class="btn btn-primary btn-sm w-100" type="submit"><i class="bi bi-search"></i> Filter</button>
+      <div class="col-12 col-md-1 d-flex gap-2">
         <a href="history.php" class="btn btn-outline-secondary btn-sm w-100">Reset</a>
         <!-- <a href="report.php?month=<?= e($fMonth) ?>" class="btn btn-outline-danger btn-sm w-100 text-nowrap">
           <i class="bi bi-printer"></i> Cetak
@@ -341,6 +340,22 @@ document.addEventListener('DOMContentLoaded', function () {
     new bootstrap.Modal(modalEl).show();
   }
 });
+
+function autoSubmit() {
+  document.getElementById('filterForm').submit();
+}
+
+// ---------- Live search Task/Notes (auto-filter tanpa tombol) ----------
+(function () {
+  const searchInput = document.getElementById('searchInput');
+  if (!searchInput) return;
+
+  let debounceTimer;
+  searchInput.addEventListener('input', function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(autoSubmit, 450); // tunggu 450ms setelah berhenti mengetik
+  });
+})();
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
